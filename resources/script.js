@@ -7,6 +7,7 @@ var circle1 = new MapObject(parseHTML(`<div class="circle1" style="width:0;heigh
     circle3 = new MapObject(parseHTML(`<div class="circle3" style="width:0;height:0;pointer-events:none;"></div>`), new Vector(0, 0), true);
 var drop = null,
     interval = null;
+
 var tracks = [{}, {}, {}, {}],
     positions = [],
     slot = 3;
