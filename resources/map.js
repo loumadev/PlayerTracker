@@ -1,9 +1,11 @@
 class DynamicMap extends EventListener {
     /**
-     * Create new Dynamic Map for Crafing Dead
+     * Creates new Dynamic Map
      * @param {HTMLElement} root Root element to place Map
      * @param {String} texture Path to texture of the Map
      * @param {Vector} centerOffset Offset from center of texture
+     * @param {Object} options Create map with initial settings
+     * @returns {DynamicMap} New Dynamic Map
      */
     constructor(root, texture, centerOffset, options) {
         super();
@@ -199,7 +201,7 @@ class DynamicMap extends EventListener {
         this.scale(this.scaleAlpha += state ? this.scaleAlpha / 5 : -this.scaleAlpha / 5);
     }
     updateTransform() {
-        get(this.element, ".texture").style.transform = `scale(${this.scaleAlpha}) translate(${-this.position.x}px, ${-this.position.y}px)`;
+        get(this.element, ".texture").style.transform = `scale(${this.scaleAlpha}) translate(${-this.position.x}px, ${-this.position.y}px) translateZ(0)`;
         this.updateCoords();
     }
     updateCoords() {
@@ -310,7 +312,7 @@ class MapObject extends EventListener {
             this.map.tip.style.opacity = 1;
             this.map.tip.style.left = pos.x + "px";
             this.map.tip.style.top = pos.y + "px";
-            this.map.tip.style.transform = `translate(${-this.map.tip.clientWidth/2 + dim.w/2}px, -120%)`;
+            this.map.tip.style.transform = `translate(${-this.map.tip.clientWidth/2 + dim.w/2}px, -120%) translateZ(0)`;
         }
 
         this.element.onmouseleave = e => {
@@ -338,7 +340,7 @@ class MapObject extends EventListener {
     updateTransform() {
         var scale = this.map.scaleAlpha;
         var s = `scale(${1 / scale}) translate(${(1 - scale) * 50}%, ${(1 - scale) * 50}%)`;
-        this.element.style.transform = `translate(${this.position.x}px, ${this.position.y}px) ${this.scaling ? "" : s} ${this.transform}`;
+        this.element.style.transform = `translate(${this.position.x}px, ${this.position.y}px) ${this.scaling ? "" : s} ${this.transform} translateZ(0)`;
     }
     setPosition(position) {
         this.position = position;
