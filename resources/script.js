@@ -1,13 +1,87 @@
-var Log = "C:/Users/MusicManSK/AppData/Roaming/.technic/modpacks/official-crafting-dead-mod/output-client.log";
+const Path = "C:/Users/MusicManSK/AppData/Roaming/.technic/modpacks/official-crafting-dead-mod";
+const Log = Path + "/output-client.log";
+const Screenshot = Path + "/screenshots/";
+
+const Win = require("electron").remote.getCurrentWindow();
 const fs = require("fs");
+const edge = require("electron-edge-js");
+
+const Click = edge.func("resources/click.cs");
+const getPixelColor = edge.func("resources/getPixel.cs");
+
+//console.log(getPixelColor({ x: 1, y: 1 }, (err, res) => console.log(err, res)));
 
 
 var circle1 = new MapObject(parseHTML(`<div class="circle1" style="width:0;height:0;pointer-events:none;"></div>`), new Vector(0, 0), true),
     circle2 = new MapObject(parseHTML(`<div class="circle2" style="width:0;height:0;pointer-events:none;"></div>`), new Vector(0, 0), true),
     circle3 = new MapObject(parseHTML(`<div class="circle3" style="width:0;height:0;pointer-events:none;"></div>`), new Vector(0, 0), true);
+
 var drop = null,
     interval = null;
 
+var maps = [{
+        id: 0,
+        src: "Atlanta.png",
+        offset: new Vector(0, 0),
+        names: ["atlanta", "at", "a"],
+        spawns: [
+            new Vector(1910, -95),
+            new Vector(445, 1779),
+            new Vector(-65, 1688),
+            new Vector(1775, 562),
+            new Vector(-123, 333),
+            new Vector(690, 354),
+            new Vector(822, -1465),
+            new Vector(320, 190),
+            new Vector(804, -1433),
+            new Vector(689, 324),
+            new Vector(942, 1523),
+            new Vector(716, 386),
+            new Vector(-308, -975),
+            new Vector(728, 481),
+            new Vector(1397, -1349),
+            new Vector(1681, 1863),
+            new Vector(832, -1348),
+            new Vector(800, -1400),
+            new Vector(1124, 911),
+            new Vector(1705, 807),
+            new Vector(1863, 891),
+            new Vector(1100, 886),
+            new Vector(1104, 903),
+            new Vector(834, -155),
+            new Vector(1594, 966),
+            new Vector(-28, -782),
+            new Vector(680, -1411),
+            new Vector(1536, 209),
+            new Vector(1124, 911),
+            new Vector(772, -1479),
+            new Vector(1117, 893),
+            new Vector(1166, 933),
+            new Vector(1708, -704),
+            new Vector(806, -1462),
+            new Vector(1465, 102),
+            new Vector(696, 278),
+            new Vector(814, -1462),
+            new Vector(1848, 95)
+        ],
+        drops: [
+            new Vector(718, 324),
+            new Vector(254, -1099),
+            new Vector(218, -40)
+        ]
+    },
+    {
+        id: 1,
+        src: "DeadIsland.png",
+        offset: new Vector(0, 0),
+        names: ["deadisland", "disland", "deadi", "ddi", "di", "dead", "island"],
+        spawns: [],
+        drops: []
+    }
+];
+var current_map = maps[0];
+
+var Position = new Vector(0, 0);
 var tracks = [{}, {}, {}, {}],
     positions = [],
     slot = 3;
@@ -16,23 +90,23 @@ var avatars = [],
 var debug = true;
 
 
-var Map = new DynamicMap(get("body"), "map.png", new Vector(0, 0), { center: new Vector(0, 0), scale: 0.5, width: window.innerWidth, height: window.innerHeight });
-Map.on("load", e => {
-    console.log("Map Loaded!");
+var DynMap = new DynamicMap(get("body"), "Atlanta.png", new Vector(0, 0), { center: new Vector(0, 0), scale: 0.5, width: window.innerWidth, height: window.innerHeight });
+DynMap.on("load", e => {
+    console.log("DynMap Loaded!");
 
 
-    Map.attachObject(circle1);
+    DynMap.attachObject(circle1);
     circle1.setTransform("translate(-50%, -50%)");
     circle1.on("scale", e => {
         circle1.element.style.borderWidth = 2 * (1 / e.value) + "px";
     });
 
-    Map.attachObject(circle2);
+    DynMap.attachObject(circle2);
     circle2.setTransform("translate(-50%, -50%)");
     circle2.on("scale", e => {
         circle2.element.style.borderWidth = 2 * (1 / e.value) + "px";
     });
-    Map.attachObject(circle3);
+    DynMap.attachObject(circle3);
     circle3.setTransform("translate(-50%, -50%)");
     circle3.on("scale", e => {
         circle3.element.style.borderWidth = 2 * (1 / e.value) + "px";
@@ -40,8 +114,8 @@ Map.on("load", e => {
 
 
     if(debug) {
-        tracks = data_tracks2;
-        positions = data_positions2;
+        tracks = data_tracks3;
+        positions = data_positions3;
         circle1.setPosition(positions[0]);
         circle2.setPosition(positions[1]);
         circle3.setPosition(positions[2]);
@@ -53,7 +127,7 @@ Map.on("load", e => {
 /* Log Listening */
 fs.writeFileSync(Log, "");
 
-fs.watchFile(Log, { interval: 1000 }, (curr, prev) => {
+fs.watchFile(Log, { interval: 1000 }, async(curr, prev) => {
     var file = fs.readFileSync(Log).toString();
     //console.log(file);
     var lines = file.split("\n");
@@ -64,11 +138,12 @@ fs.watchFile(Log, { interval: 1000 }, (curr, prev) => {
 
     var nearby = change.match(/\[CHAT\] Players nearby: (.*?)$/);
     var supply = change.match(/\[CHAT\] \[Supply Drop\] \[(.*?)\] (?:(\d*?)m (\d*?)s remaining\.|Supply Drop Incoming!) x:([-0-9]*?) z:([-0-9]*?)$/);
+    var screenshot = change.match(/\[CHAT\] Saved screenshot as (.*?)$/);
 
 
 
     if(command) {
-        var args = command[1].split(" ");
+        var args = command[1].replace(/\\\./g, ".").split(" ");
         var cmd = args.shift();
 
         //console.log(command, cmd, args);
@@ -78,7 +153,7 @@ fs.watchFile(Log, { interval: 1000 }, (curr, prev) => {
 
     if(nearby) {
         if(nearby[1] == "none") {
-            console.log("No nearby players!");
+            stdout.print("No nearby players!");
             tracks[slot] = {};
             slot = 3;
             return;
@@ -95,7 +170,7 @@ fs.watchFile(Log, { interval: 1000 }, (curr, prev) => {
             console.log(`${player[0]} => ${player[1]}`);
         }
 
-        stdout.print(`<span style="background:${slot == 3 ? "inherit" : "red"}">< Got nearby players! (${players.length})</span>`);
+        stdout.print(`<span style="background:${slot == 3 ? "inherit" : "green"}">< Got nearby players! (${players.length})</span>`);
 
         slot = 3;
     }
@@ -119,7 +194,7 @@ fs.watchFile(Log, { interval: 1000 }, (curr, prev) => {
         time.setSeconds(time.getSeconds() + +sec);
 
         drop = new MapObject(parseHTML(`<div class="supplydrop ${type}" tip="X: ${x} Z: ${z}"><div class="time">${min && min ? min+":"+sec : ""}</div><div class="icon" style="background-image:url(SupplyDrop_${type}.png)"></div></div>`), new Vector(x, z), false);
-        Map.attachObject(drop);
+        DynMap.attachObject(drop);
         drop.setTransform("translate(-50%, -100%)");
 
         setTimeout(() => {
@@ -136,6 +211,12 @@ fs.watchFile(Log, { interval: 1000 }, (curr, prev) => {
 
             get(drop.element, ".time").innerHTML = `${fixDigits(m)}:${fixDigits(s)}`;
         }, 1000);
+    }
+
+    if(screenshot) {
+        var Position = await Digits.parseImage(Screenshot + screenshot[1]);
+
+        DynMap.center(Position);
     }
 });
 
@@ -171,7 +252,7 @@ stdin.onkeypress = e => {
 
 /* Handler */
 
-function handleCommand(cmd, args = []) {
+async function handleCommand(cmd, args = []) {
     if(cmd == "execute") {
         var code = args.join(" ");
         try {
@@ -183,16 +264,61 @@ function handleCommand(cmd, args = []) {
         var pos = new Vector(args.shift(), args.shift());
         var label = args.join(" ");
 
-        Map.createMarker(pos, Color.random(128, 64, -200), label);
+        DynMap.createMarker(pos, Color.random(128, 64, -200), label);
     } else if(cmd == "center") {
-        Map.translate(new Vector(args[0], args[1]), 1000);
-        Map.scale(0.5);
+        DynMap.translate(new Vector(+args[0], +args[1]), 1000);
+        DynMap.scale(0.5);
     } else if(cmd == "zoom") {
-        Map.scale(args[0], 1000);
+        DynMap.scale(+args[0], 1000);
+    } else if(cmd == "window") {
+        Win.show();
+        Win.maximize();
+    } else if(cmd == "map") {
+        var name = args[0];
+        var _map = null;
+
+        for(var m of maps) {
+            if(m.names.includes(name.toLowerCase())) _map = m;
+            else if(m.src == name) _map = m;
+        }
+
+        if(!_map) stdout.print(`Error: Cannot find map ${name}`);
+
+        DynMap.removeMap();
+        DynMap = new DynamicMap(get("body"), _map.src, _map.offset, { center: new Vector(0, 0), scale: 0.5, width: window.innerWidth, height: window.innerHeight });
+
+        current_map = _map;
+    } else if(cmd.includes("test")) {
+
+        var X = 28;
+        var Y = 147;
+        var W = 58;
+        var H = 14;
+
+        console.time("test");
+
+        for(var i = 0; i < H; i += 2) {
+            for(var j = 0; j < W; j += 2) {
+
+                var x = X + j;
+                var y = Y + i;
+                var color = await new Promise((resolve, reject) => {
+                    getPixelColor({ x: x, y: y }, (err, res) => {
+                        if(err) reject(err);
+                        else resolve(res);
+                    });
+                });
+
+                console.log(color);
+            }
+        }
+
+        console.timeEnd("test");
+
     } else if(cmd == "drop") {
         if(drop) {
-            Map.translate(drop.position, 1000);
-            Map.scale(0.5);
+            DynMap.translate(drop.position, 1000);
+            DynMap.scale(0.5);
         }
     } else if(cmd.startsWith("pos")) {
         var id = cmd.match(/pos([1-3])/);
@@ -204,28 +330,48 @@ function handleCommand(cmd, args = []) {
 
         positions[slot] = pos;
         window[`circle${id[1]}`].setPosition(pos);
-        Map.translate(pos);
-        Map.scale(1);
+        DynMap.translate(pos);
+        DynMap.scale(1);
 
         stdout.print(`<span style="background:red">< Got position ${id[1]}! [${pos.x}, ${pos.y}]</span>`);
     } else if(cmd == "locate") {
         var nick = args[0];
 
-        var d1 = tracks[0][nick] * 2;
-        var d2 = tracks[1][nick] * 2;
-        var d3 = tracks[2][nick] * 2;
+        var r1 = tracks[0][nick];
+        var r2 = tracks[1][nick];
+        var r3 = tracks[2][nick];
 
-        circle1.element.style.width = d1 + "px";
-        circle1.element.style.height = d1 + "px";
+        circle1.element.style.width = r1 * 2 + "px";
+        circle1.element.style.height = r1 * 2 + "px";
 
-        circle2.element.style.width = d2 + "px";
-        circle2.element.style.height = d2 + "px";
+        circle2.element.style.width = r2 * 2 + "px";
+        circle2.element.style.height = r2 * 2 + "px";
 
-        circle3.element.style.width = d3 + "px";
-        circle3.element.style.height = d3 + "px";
+        circle3.element.style.width = r3 * 2 + "px";
+        circle3.element.style.height = r3 * 2 + "px";
 
-        Map.translate(located[nick], 1000);
-        if(Map.scaleAlpha < 1) Map.scale(1);
+        if(r1 && r2 && r3) {
+            DynMap.translate(located[nick], 1000);
+            if(DynMap.scaleAlpha < 1) DynMap.scale(1);
+        } else if(r1 || r2 || r3) {
+            console.log(r1, r2, r3);
+            /*var c1 = r1 && r2;
+            var c2 = r2 && r3;
+            var c3 = r3 && r1;
+
+            if(c1) {
+            	var p = intersection(positions[0], r1, positions[1], r2);
+            } else if(c2) {
+            	var p = intersection(positions[1], r2, positions[2], r3);
+            } else if(c3) {
+            	var p = intersection(positions[2], r3, positions[0], r1);
+            } else {
+
+            }*/
+
+        } else {
+            stdout.print(`< Error: No data!`);
+        }
 
         if(debug) console.log("Located player " + nick);
         stdout.print(`< Player ${nick} located!`);
@@ -345,7 +491,7 @@ function handleCommand(cmd, args = []) {
 					<span style='color:#afafaf'>Accuracy: <span style='color:hsl(${map(acc, 0, 100, 0, 120)},100%,50%)'>${acc.toFixed(1)}%</span></span><br>
 					<span style='color:#afafaf'>Loot: <span style='color:hsl(${map(loot, 0, 100, 0, 120)},100%,50%)'>${loot.toFixed(1)}%</span></span>`;
             var user = new MapObject(parseHTML(`<div class="avatar" tip="${tip}"><div class="icon" style="background-image:url(https://minotar.net/avatar/${player}/8)"></div></div>`), pos, false, true);
-            Map.attachObject(user);
+            DynMap.attachObject(user);
             user.setTransform("translate(-50%, -50%)");
             user.on("click", e => {
                 handleCommand("locate", [player]);

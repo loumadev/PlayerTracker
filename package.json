@@ -3,7 +3,11 @@
     "version": "1.0.0",
     "description": "",
     "main": "main.js",
-    "dependencies": {},
+    "dependencies": {
+        "edge": "^7.10.1",
+        "edge-js": "^13.0.1",
+        "electron-edge-js": "^12.13.0"
+    },
     "devDependencies": {
         "electron": "^8.1.1"
     },

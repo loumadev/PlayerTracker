@@ -36,6 +36,10 @@ class DynamicMap extends EventListener {
         this.tip = null;
         this.objects = [];
     }
+    removeMap() {
+        this.element.remove();
+        delete this;
+    }
     createMap() {
         var style = `
 		.map {
@@ -201,7 +205,7 @@ class DynamicMap extends EventListener {
         this.scale(this.scaleAlpha += state ? this.scaleAlpha / 5 : -this.scaleAlpha / 5);
     }
     updateTransform() {
-        get(this.element, ".texture").style.transform = `scale(${this.scaleAlpha}) translate(${-this.position.x}px, ${-this.position.y}px) translateZ(0)`;
+        get(this.element, ".texture").style.transform = `scale(${this.scaleAlpha}) translate(${-this.position.x}px, ${-this.position.y}px)`;
         this.updateCoords();
     }
     updateCoords() {
@@ -278,8 +282,8 @@ class DynamicMap extends EventListener {
 
         get(this.element, ".texture").appendChild(object.element);
     }
-    createMarker(position, color = "orange", text = "") {
-        var object = new MapObject(parseHTML(`<div class="marker" style="--color:${color}" tip="Marker<br>X: ${~~position.x} Z: ${~~position.y}${text ? "<br>" + text : ""}"><div class="icon"></div></div>`), position, false);
+    createMarker(position, color = "orange", text = "Marker") {
+        var object = new MapObject(parseHTML(`<div class="marker" style="--color:${color}" tip="${text}<br>X: ${~~position.x} Z: ${~~position.y}${text ? "<br>" + text : ""}"><div class="icon"></div></div>`), position, false);
         this.attachObject(object);
         object.setTransform("translate(-50%, -100%)");
         return object;
