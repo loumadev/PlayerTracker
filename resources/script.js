@@ -172,7 +172,8 @@ fs.watchFile(Log, { interval: 1000 }, async(curr, prev) => {
 
         stdout.print(`<span style="background:${slot == 3 ? "inherit" : "green"}">< Got nearby players! (${players.length})</span>`);
 
-        slot = 3;
+        if(slot != 3) slot++;
+        //slot = 3;
     }
 
     if(supply) {
@@ -214,9 +215,17 @@ fs.watchFile(Log, { interval: 1000 }, async(curr, prev) => {
     }
 
     if(screenshot) {
-        var Position = await Digits.parseImage(Screenshot + screenshot[1]);
+        Digits.parseImage(Screenshot + screenshot[1]).then(pos => {
+            Position = pos;
 
-        DynMap.center(Position);
+            DynMap.translate(Position);
+
+            if(slot != 3) { //Tracking
+                handleCommand(`pos${slot + 1}`, [Position.x, Position.y]);
+            }
+        }).catch(err => {
+            stdout.print(`> ScreeshotError: ${err}`);
+        });
     }
 });
 
@@ -248,7 +257,6 @@ stdin.onkeypress = e => {
         handleCommand(cmd, args);
     }
 };
-
 
 /* Handler */
 
@@ -375,6 +383,10 @@ async function handleCommand(cmd, args = []) {
 
         if(debug) console.log("Located player " + nick);
         stdout.print(`< Player ${nick} located!`);
+    } else if(cmd == "begin") {
+        slot = 0;
+        stdout.print(`< Tracking started!`);
+
     } else if(cmd == "track") {
 
         //Remove all avatars
