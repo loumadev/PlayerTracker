@@ -315,32 +315,47 @@ async function handleCommand(cmd, args = []) {
         DynMap = new DynamicMap(get("body"), _map.src, _map.offset, { center: new Vector(0, 0), scale: 0.5, width: window.innerWidth, height: window.innerHeight });
 
         current_map = _map;
-    } else if(cmd.includes("test")) {
+    } else if(cmd == "sell") {
+        var n = args[0] || 3;
+        console.log(n);
 
-        var X = 28;
-        var Y = 147;
-        var W = 58;
-        var H = 14;
+        var clicks = 0;
+        var time = new Date();
+        var X = 808;
+        var Y = 385;
+        var W = 32;
+        var H = 32;
+        var R = 6;
+        var C = 9;
+        var B = 4;
 
-        console.time("test");
+        stdout.print("Started clicking...");
 
-        for(var i = 0; i < H; i += 2) {
-            for(var j = 0; j < W; j += 2) {
+        for(var i = 0; i < R; i++) {
+            for(var j = 0; j < C; j++) {
+                var cX = W / 2;
+                var cY = H / 2;
 
-                var x = X + j;
-                var y = Y + i;
-                var color = await new Promise((resolve, reject) => {
-                    getPixelColor({ x: x, y: y }, (err, res) => {
-                        if(err) reject(err);
-                        else resolve(res);
+                var bX = B * j;
+                var bY = B * i;
+
+                var x = X + j * W + bX + cX;
+                var y = Y + i * H + bY + cY;
+
+                for(var k = 0; k < n; k++) {
+                    clicks++;
+                    await new Promise((resolve, reject) => {
+                        Click({ x: x, y: y, left: false }, (err, res) => {
+                            if(err) reject(err);
+                            else resolve(res);
+                        });
                     });
-                });
-
-                console.log(color);
+                    await timeout(20);
+                }
             }
         }
 
-        console.timeEnd("test");
+        stdout.print(`Clicked ${clicks} times (${new Date().getTime() - time}ms)!`);
 
     } else if(cmd == "drop") {
         if(drop) {

@@ -22,7 +22,7 @@ public class Startup {
 	public async Task<object> Invoke(dynamic obj) {
 		int x = (int)obj.x;
         int y = (int)obj.y;
-        bool left = (bool)obj.left || true;
+        bool left = (bool)obj.left;
 
 		Click(x, y, left);
 
