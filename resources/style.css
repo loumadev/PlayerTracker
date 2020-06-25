@@ -59,6 +59,10 @@ body {
     border-color: rgba(222, 222, 222, 0.8);
 }
 
+.console:focus-within>.output {
+    -webkit-mask-image: none;
+}
+
 ::-webkit-scrollbar {
     width: 4px;
 }
@@ -71,7 +75,7 @@ body {
     background: transparent;
 }
 
- ::-webkit-scrollbar-thumb:hover {
+.console:focus-within ::-webkit-scrollbar-thumb {
     background: rgba(136, 136, 136, 0.4);
 }
 

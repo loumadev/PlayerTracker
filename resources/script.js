@@ -231,8 +231,15 @@ fs.watchFile(Log, { interval: 1000 }, async(curr, prev) => {
 
 
 /* CLI */
-var stdin = get(".console .input");
-var stdout = get(".console .output");
+const stdin = get(".console .input");
+const stdout = get(".console .output");
+stdin.buffer = [];
+stdin.pointer = 0;
+stdin.current = "";
+stdin.setSelection = (from, to = from) => {
+    stdin.focus();
+    stdin.setSelectionRange(from, to);
+};
 stdout.print = string => {
     stdout.innerHTML += string + "<br>";
     stdout.scrollTo({
@@ -240,12 +247,12 @@ stdout.print = string => {
         top: stdout.scrollHeight,
         behavior: "smooth"
     });
-}
+};
 
-stdin.onkeypress = e => {
+stdin.onkeydown = e => {
     var input = stdin.value;
 
-    if(e.keyCode === 13) {
+    if(e.keyCode === 13) { //Enter
         stdout.print("> " + input);
         stdin.value = "";
 
@@ -255,20 +262,32 @@ stdin.onkeypress = e => {
         var cmd = args.shift();
 
         handleCommand(cmd, args);
+    } else if(e.keyCode === 38) { //UP
+        if(stdin.pointer == stdin.buffer.length) stdin.current = stdin.value;
+        if(stdin.pointer) stdin.value = stdin.buffer[--stdin.pointer];
+        stdin.setSelection(stdin.value.length - 1);
+        e.preventDefault();
+    } else if(e.keyCode === 40) { //DOWN
+        if(stdin.pointer < stdin.buffer.length) stdin.value = stdin.buffer[++stdin.pointer] || stdin.current;
+        stdin.setSelection(stdin.value.length - 1);
+        e.preventDefault();
     }
 };
 
-/* Handler */
-
+/* Command Handler */
 async function handleCommand(cmd, args = []) {
+    stdin.pointer = stdin.buffer.push(cmd + " " + args.join(" "));
+
     if(cmd == "execute") {
         var code = args.join(" ");
         try {
+            stdout.print("Executed result: " + eval(code));
             console.log("Executed result:", eval(code));
         } catch(e) {
+            stdout.print(`Failed to execute expression "${code}"`);
             console.error(`Failed to execute expression "${code}"`);
         }
-    } else if(cmd == "mark") {
+    } else if(cmd == "marker") {
         var pos = new Vector(args.shift(), args.shift());
         var label = args.join(" ");
 
