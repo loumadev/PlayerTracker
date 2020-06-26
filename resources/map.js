@@ -41,8 +41,7 @@ class DynamicMap extends EventListener {
         delete this;
     }
     createMap() {
-        var style = `
-		.map {
+        var style = `.map {
 			position: relative;
 			width: 700px;
 			height: 700px;
@@ -84,7 +83,8 @@ class DynamicMap extends EventListener {
 			left: 50%;
 			width: 2px;
 			height: 2px;
-			background-color: red;
+			opacity: 0.8;
+			background-color: #ff1e00;
 			transform: translate(-50%, -50%);
 			z-index: 1;
 		}
@@ -105,6 +105,95 @@ class DynamicMap extends EventListener {
 		.map .view .texture .map-object:hover {
 			opacity: 0.9;
 			z-index: 50;
+		}
+
+		.map aside {
+			--width: 20%;
+			position: fixed;
+			top: 0;
+			right: calc(var(--width) * -1);
+			height: 100%;
+			width: var(--width);
+			background-color: rgba(0, 0, 0, 0.5);
+			transition: .25s;
+		}
+		.map aside.active {
+			right: 0;
+		}
+		.map aside .button {
+			--margin: 15px;
+			--width: 45px;
+			position: absolute;
+			height: var(--width);
+			width: var(--width);
+			top: var(--margin);
+			left: calc(-1 * (var(--width) + var(--margin)));
+			background-color: rgba(0, 0, 0, 0.5);
+			border-radius: 50%;
+			padding: 12px 10px;
+			cursor: pointer;
+			opacity: 0.5;
+			transition: .25s;
+		}
+		.map aside .button:hover {
+			opacity: 1;
+		}
+		.map aside .button div {
+			width: 25px;
+			height: 4px;
+			background-color: white;
+			border-radius: 2px;
+		}
+		.map aside .button div:nth-child(2) {
+			margin: 4px 0;
+		}
+		.map aside .groups {
+			margin: 50px 20px;
+		}
+		.map aside .group {
+			margin-bottom: 15px;
+		}
+		.map aside .header {
+			border-bottom: 1px solid #696969;
+			padding: 1px 4px;
+			font-size: 12px;
+		}
+		.map aside .items {
+			margin: 5px 0 10px;
+			padding: 0 5px;
+		}
+		.map aside .item {
+			display: flex;
+			align-items: center;
+			margin: 2px 0;
+			cursor: pointer;
+			padding: 6px;
+			border-radius: 2px;
+			transition: 0.25s;
+		}
+		.map aside .item:hover {
+			background-color: rgba(0, 0, 0, 0.25);
+		}
+		.map aside .icon {
+			width: 32px;
+			height: 32px;
+			background-color: #707888;
+			background-image: var(--url);
+			background-position: center;
+			background-repeat: no-repeat;
+			background-size: contain;
+			image-rendering: pixelated;
+		}
+		.map aside .label {
+			margin: 0 10px;
+		}
+		.map aside .name {
+			font-size: 15px;
+		}
+		.map aside .desc {
+			font-size: 12px;
+			opacity: 0.75;
+			padding: 1px 0;
 		}
 
 		.map .panel {
@@ -138,8 +227,7 @@ class DynamicMap extends EventListener {
 			box-sizing: content-box;
 			border-radius: 50% 50% 50% 0;
 			transform: rotate(-45deg);
-		}
-		`;
+		}`;
 
         var w = this.image.width;
         var h = this.image.height;
@@ -152,13 +240,16 @@ class DynamicMap extends EventListener {
 			<div class="dot"></div>
 			<div class="tip"></div>
 			<div class="view">
-				<div class="texture" style="background-image:url(${this.texture});width:${w}px;height:${h}px;left:${-(originX - this.width / 2)}px;top:${-(originY - this.height / 2)}px;">
-					<!--<div>
-						<div class="circle1" style="transform: translate(700px, 300px) translate(-50%, -50%);"></div>
-						<div class="circle2" style="transform: translate(700px, 300px) translate(-50%, -50%);"></div>
-					</div>-->
-				</div>
+				<div class="texture" style="background-image:url(${this.texture});width:${w}px;height:${h}px;left:${-(originX - this.width / 2)}px;top:${-(originY - this.height / 2)}px;"></div>
 			</div>
+			<aside>
+				<div class="button">
+					<div></div>
+					<div></div>
+					<div></div>
+				</div>
+				<div class="groups"></div>
+			</aside>
 			<div class="panel">
 				<div class="left">
 					<div class="coords cursor">X: 0 Z: 0</div>
@@ -173,6 +264,7 @@ class DynamicMap extends EventListener {
 
         this.element = this.root.appendChild(parseHTML(html));
         this.tip = get(this.element, ".tip");
+        get(this.element, "aside .button").onclick = e => toggleClass(get(this.element, "aside"), "active");
     }
     translate(position, time) {
         this.position = position;
@@ -275,18 +367,28 @@ class DynamicMap extends EventListener {
             }
         });
     }
-    attachObject(object) {
-        object.map = this;
-        object.updateTransform();
-        this.objects.push(object);
-
-        get(this.element, ".texture").appendChild(object.element);
-    }
     createMarker(position, color = "orange", text = "Marker") {
         var object = new MapObject(parseHTML(`<div class="marker" style="--color:${color}" tip="${text}<br>X: ${~~position.x} Z: ${~~position.y}${text ? "<br>" + text : ""}"><div class="icon"></div></div>`), position, false);
         this.attachObject(object);
         object.setTransform("translate(-50%, -100%)");
         return object;
+    }
+    attachObject(object) {
+        if(!(object instanceof MapObject)) throw new TypeError("object is not instance of MapObject!");
+
+        object.map = this;
+        object.updateTransform();
+        this.objects.push(object);
+
+        get(this.element, ".texture").appendChild(object.element);
+        return object;
+    }
+    attachGroup(group) {
+        if(!(group instanceof MapGroup)) throw new TypeError("group is not instance of MapGroup!");
+
+        group.map = this;
+        get(this.element, "aside .groups").appendChild(group.element);
+        return group;
     }
 }
 
@@ -353,5 +455,51 @@ class MapObject extends EventListener {
     destroy() {
         this.map.objects.splice(this.map.objects.indexOf(this), 1);
         this.element.remove();
+    }
+}
+
+class MapGroup extends EventListener {
+    constructor(name) {
+        super();
+        this.name = name;
+        this.items = [];
+        this.createGroup()
+    }
+    createGroup() {
+        var html = `<div class="group">
+			<div class="header">${this.name}</div>
+			<div class="items"></div>
+		</div>`;
+        this.element = parseHTML(html);
+    }
+    attachItem(item) {
+        if(!(item instanceof MapItem)) throw new TypeError("item is not instance of MapItem!");
+
+        item.map = this.map;
+        item.group = this;
+        this.items.push(item);
+        this.element.appendChild(item.element);
+
+        return item;
+    }
+}
+
+class MapItem extends EventListener {
+    constructor(name, description, icon) {
+        super();
+        this.name = name;
+        this.description = description;
+        this.icon = icon;
+        this.createItem();
+    }
+    createItem() {
+        var html = `<div class="item">
+			<div class="icon" style="--url: url(${this.icon})"></div>
+			<div class="label">
+				<div class="name">${this.name}</div>
+				<div class="desc">${this.description}</div>
+			</div>
+		</div>`;
+        this.element = parseHTML(html);
     }
 }

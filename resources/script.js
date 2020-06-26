@@ -8,6 +8,7 @@ const edge = require("electron-edge-js");
 
 const Click = edge.func("resources/click.cs");
 const getPixelColor = edge.func("resources/getPixel.cs");
+const KeyPress = edge.func("resources/keyboard.cs");
 
 //console.log(getPixelColor({ x: 1, y: 1 }, (err, res) => console.log(err, res)));
 
@@ -357,6 +358,15 @@ async function handleCommand(cmd, args = []) {
 
         stdout.print(`Clicked ${clicks} times (${new Date().getTime() - time}ms)!`);
 
+    } else if(cmd == "screenshot") {
+        console.log("Taking screenshot...");
+        await new Promise((resolve, reject) => {
+            KeyPress({ keyCode: 0x71 }, (err, res) => {
+                if(err) reject(err);
+                else resolve(res);
+            });
+        });
+        console.log("Screenshot taken!");
     } else if(cmd == "drop") {
         if(drop) {
             DynMap.translate(drop.position, 1000);

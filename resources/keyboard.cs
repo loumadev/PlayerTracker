@@ -1,21 +1,22 @@
+using System;
+using System.Diagnostics;
 using System.Threading.Tasks;
+using System.Runtime.InteropServices;
 
-static class Program {
+public class Startup {
     const UInt32 WM_KEYDOWN = 0x0100;
-    const int VK_F5 = 0x74;
-
+	
     [DllImport("user32.dll")]
     static extern bool PostMessage(IntPtr hWnd, UInt32 Msg, int wParam, int lParam);
 
     [STAThread]
     public async Task<object> Invoke(dynamic obj) {
-        while(true) {
-            Process [] processes = Process.GetProcessesByName("iexplore");
+        Process [] processes = Process.GetProcessesByName("javaw");
 
-            foreach(Process proc in processes)
-                PostMessage(proc.MainWindowHandle, WM_KEYDOWN, VK_F5, 0);
+        foreach(Process proc in processes) {
+            PostMessage(proc.MainWindowHandle, WM_KEYDOWN, (int)obj.keyCode, 0);
+		}
 
-            Thread.Sleep(5000);
-        }
+		return true;
     }
 }
