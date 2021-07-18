@@ -35,6 +35,7 @@ class DynamicMap extends EventListener {
 
         this.tip = null;
         this.objects = [];
+        this.groups = [];
     }
     removeMap() {
         this.element.remove();
@@ -153,6 +154,9 @@ class DynamicMap extends EventListener {
 		.map aside .group {
 			margin-bottom: 15px;
 		}
+		.map aside .group.hidden {
+			display: none;
+		}
 		.map aside .header {
 			border-bottom: 1px solid #696969;
 			padding: 1px 4px;
@@ -165,7 +169,7 @@ class DynamicMap extends EventListener {
 		.map aside .item {
 			display: flex;
 			align-items: center;
-			margin: 2px 0;
+			margin: 8px 0;
 			cursor: pointer;
 			padding: 6px;
 			border-radius: 2px;
@@ -173,6 +177,10 @@ class DynamicMap extends EventListener {
 		}
 		.map aside .item:hover {
 			background-color: rgba(0, 0, 0, 0.25);
+		}
+		.map aside .item.active {
+			pointer-events: none;
+			background-color: rgba(255, 255, 255, 0.2);
 		}
 		.map aside .icon {
 			width: 32px;
@@ -308,22 +316,23 @@ class DynamicMap extends EventListener {
         get(this.element, ".coords.center").innerHTML = `X: ${Math.round(this.position.x)} Z: ${Math.round(this.position.y)}`;
     }
     addListeners() {
-        this.element.onwheel = e => {
+        var view = get(this.element, ".view");
+        view.onwheel = e => {
             this.zoom(e.deltaY < 0);
         };
 
-        this.element.onmousedown = e => {
+        view.onmousedown = e => {
             this.isDraging = true;
             this.mousePositionPrev = new Vector(e.clientX, e.clientY);
             get(this.element, ".view").style.cursor = "move";
             get(this.element, ".texture").style.transition = "none";
         };
-        this.element.onmouseup = e => {
+        view.onmouseup = e => {
             this.isDraging = false;
             get(this.element, ".view").style.cursor = "default";
             get(this.element, ".texture").style.transition = ".25s";
         };
-        this.element.onmousemove = e => {
+        view.onmousemove = e => {
             this.mousePosition = new Vector(e.clientX, e.clientY);
             this.updateCoords();
 
@@ -387,6 +396,8 @@ class DynamicMap extends EventListener {
         if(!(group instanceof MapGroup)) throw new TypeError("group is not instance of MapGroup!");
 
         group.map = this;
+        this.groups.push(group);
+
         get(this.element, "aside .groups").appendChild(group.element);
         return group;
     }
@@ -463,10 +474,11 @@ class MapGroup extends EventListener {
         super();
         this.name = name;
         this.items = [];
+        this.selected = null;
         this.createGroup()
     }
     createGroup() {
-        var html = `<div class="group">
+        var html = `<div class="group hidden">
 			<div class="header">${this.name}</div>
 			<div class="items"></div>
 		</div>`;
@@ -478,9 +490,14 @@ class MapGroup extends EventListener {
         item.map = this.map;
         item.group = this;
         this.items.push(item);
-        this.element.appendChild(item.element);
+        get(this.element, ".items").appendChild(item.element);
+        toggleClass(this.element, "hidden", false);
 
         return item;
+    }
+    destroy() {
+        this.map.groups.splice(this.map.groups.indexOf(this), 1);
+        this.element.remove();
     }
 }
 
@@ -501,5 +518,18 @@ class MapItem extends EventListener {
 			</div>
 		</div>`;
         this.element = parseHTML(html);
+        this.element.addEventListener("click", e => {
+            this.dispatchEvent("click", { event: e });
+        });
+    }
+    destroy() {
+        this.group.items.splice(this.group.items.indexOf(this), 1);
+        this.element.remove();
+        if(!this.group.items.length) toggleClass(this.group.element, "hidden", true);
+    }
+    select() {
+        if(this.group.selected) toggleClass(this.group.selected.element, "active", false);
+        toggleClass(this.element, "active", true);
+        this.group.selected = this;
     }
 }

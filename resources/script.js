@@ -15,7 +15,11 @@ const KeyPress = edge.func("resources/keyboard.cs");
 
 var circle1 = new MapObject(parseHTML(`<div class="circle1" style="width:0;height:0;pointer-events:none;"></div>`), new Vector(0, 0), true),
     circle2 = new MapObject(parseHTML(`<div class="circle2" style="width:0;height:0;pointer-events:none;"></div>`), new Vector(0, 0), true),
-    circle3 = new MapObject(parseHTML(`<div class="circle3" style="width:0;height:0;pointer-events:none;"></div>`), new Vector(0, 0), true);
+    circle3 = new MapObject(parseHTML(`<div class="circle3" style="width:0;height:0;pointer-events:none;"></div>`), new Vector(0, 0), true),
+    circle4 = new MapObject(parseHTML(`<div class="circle4" style="width:0;height:0;pointer-events:none;"></div>`), new Vector(0, 0), true);
+
+var locateGroup = new MapGroup("Located Players"),
+    nearGroup = new MapGroup("Nearby Players");
 
 var drop = null,
     interval = null;
@@ -101,7 +105,6 @@ DynMap.on("load", e => {
     circle1.on("scale", e => {
         circle1.element.style.borderWidth = 2 * (1 / e.value) + "px";
     });
-
     DynMap.attachObject(circle2);
     circle2.setTransform("translate(-50%, -50%)");
     circle2.on("scale", e => {
@@ -113,6 +116,16 @@ DynMap.on("load", e => {
         circle3.element.style.borderWidth = 2 * (1 / e.value) + "px";
     });
 
+    DynMap.attachObject(circle4);
+    circle4.setTransform("translate(-50%, -50%)");
+    circle4.on("scale", e => {
+        circle4.element.style.borderWidth = 2 * (1 / e.value) + "px";
+    });
+
+
+    DynMap.attachGroup(locateGroup);
+    DynMap.attachGroup(nearGroup);
+
 
     if(debug) {
         tracks = data_tracks3;
@@ -123,6 +136,11 @@ DynMap.on("load", e => {
     }
 
 });
+
+
+function getAvatarURL(name, resolution = 8) {
+    return `https://minotar.net/avatar/${name}/${resolution}`;
+}
 
 
 /* Log Listening */
@@ -165,16 +183,50 @@ fs.watchFile(Log, { interval: 1000 }, async(curr, prev) => {
             return [m[1], m[2]];
         });
 
+        //Remove all players from side menu
+        var items = [...nearGroup.items];
+        for(var item of items) item.destroy();
+
         tracks[slot] = {};
-        for(var player of players) {
-            tracks[slot][player[0].match(/[^ ]*$/)] = +player[1];
-            console.log(`${player[0]} => ${player[1]}`);
+        for(let player of players) {
+            //Parse data
+            let m = player[0].match(/(?:\[(\w+)\] \? )?(\w+)/);
+            let rank = m[1];
+            let name = m[2];
+            let distance = +player[1];
+
+            //Set to tracking data
+            tracks[slot][name] = distance;
+
+            //Create new player
+            let item = new MapItem(name, `${distance} blocks`, getAvatarURL(name));
+            item.on("click", e => {
+                circle4.element.style.width = distance * 2 + "px";
+                circle4.element.style.height = distance * 2 + "px";
+
+                circle4.setPosition(Position, 1000);
+                DynMap.translate(Position, 1000);
+
+                var windowSize = Math.min(window.innerWidth, window.innerHeight);
+                var margin = 80;
+
+                var r = (windowSize - margin * 2) / 2;
+                if(debug) console.log(r, distance, r / distance);
+
+                DynMap.scale(r / distance, 1000);
+                item.select();
+                //handleCommand("locate", [player]);
+            });
+            nearGroup.attachItem(item);
+
+            if(debug) console.log(`${player[0]} => ${player[1]}`);
         }
 
         stdout.print(`<span style="background:${slot == 3 ? "inherit" : "green"}">< Got nearby players! (${players.length})</span>`);
 
         if(slot != 3) slot++;
         //slot = 3;
+
     }
 
     if(supply) {
@@ -433,10 +485,11 @@ async function handleCommand(cmd, args = []) {
 
     } else if(cmd == "track") {
 
-        //Remove all avatars
-        for(var avatar of avatars) {
-            avatar.destroy();
-        }
+        //Remove all items and avatars
+        var items = [...locateGroup.items];
+        var avatars2 = [...avatars];
+        for(var item of items) item.destroy();
+        for(var avatar of avatars2) avatar.destroy();
         avatars = [];
 
         //Get center of circles
@@ -542,17 +595,25 @@ async function handleCommand(cmd, args = []) {
             //Create map object
             var acc = fit(-Math.sqrt(t) * 0.03 + 1, 0, 1) * 100;
             var loot = (1 - (players.indexOf(player) / (players.length - 1))) * 100;
+            var url = getAvatarURL(player);
             var tip = `<b style='font-size:15px'>${player}</b><br>
 					X: ${~~x} Z: ${~~y}<br>
 					<span style='color:#afafaf'>Accuracy: <span style='color:hsl(${map(acc, 0, 100, 0, 120)},100%,50%)'>${acc.toFixed(1)}%</span></span><br>
 					<span style='color:#afafaf'>Loot: <span style='color:hsl(${map(loot, 0, 100, 0, 120)},100%,50%)'>${loot.toFixed(1)}%</span></span>`;
-            var user = new MapObject(parseHTML(`<div class="avatar" tip="${tip}"><div class="icon" style="background-image:url(https://minotar.net/avatar/${player}/8)"></div></div>`), pos, false, true);
+            var user = new MapObject(parseHTML(`<div class="avatar" tip="${tip}"><div class="icon" style="background-image:url(${url})"></div></div>`), pos, false, true);
             DynMap.attachObject(user);
             user.setTransform("translate(-50%, -50%)");
             user.on("click", e => {
                 handleCommand("locate", [player]);
             });
             avatars.push(user);
+
+            //Add user to side menu
+            var item = new MapItem(player, `acc: ${~~acc}% | loot: ${~~loot}%`, url);
+            item.on("click", e => {
+                handleCommand("locate", [player]);
+            });
+            locateGroup.attachItem(item);
         }
         stdout.print(`< Tracked ${players.length} palyers!`);
     } else {

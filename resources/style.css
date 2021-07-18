@@ -84,7 +84,8 @@ body {
 
 .circle1,
 .circle2,
-.circle3 {
+.circle3,
+.circle4 {
     border-radius: 50%;
 }
 
@@ -98,6 +99,10 @@ body {
 
 .circle3 {
     border: 2px solid blue;
+}
+
+.circle4 {
+    border: 2px solid aqua;
 }
 
 .map .supplydrop {
